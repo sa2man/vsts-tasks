@@ -1,31 +1,47 @@
-# Visual Studio Team Services Tasks
-![Tasks](/taskbanner.png "Tasks")
+Sample KMDF Bus Driver for OSR USB-FX2
+======================================
 
-## Overview
-This repo contains the tasks that are provided out of the box with Visual Studio Team Services and Team Foundation Server.
+The kmdf\_enumswitches sample demonstrates how to use Kernel-Mode Driver Framework (KMDF) as a bus driver using the OSR USB-FX2 device.
 
-This provides open examples on how we write tasks which will help you write other tasks which can be uploaded to your account or server.  See writing tasks below.
+This sample is written for the OSR USB-FX2 Learning Kit. The specification for the device is at <http://www.osronline.com/hardware/OSRFX2_32.pdf>.
 
-## Status
-|   | Build & Test |
-|---|:-----:|
-|![Win](docs/res/win_med.png) **Windows**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/1474/badge?branch=master)| 
-|![OSX](docs/res/apple_med.png) **OSX**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/4213/badge?branch=master)| 
-|![Ubuntu14](docs/res/ubuntu_med.png) **Ubuntu 14.04**|![Build & Test](https://mseng.visualstudio.com/_apis/public/build/definitions/b924d696-3eae-4116-8443-9a18392d8544/4088/badge?branch=master)|
+Testing the Device
+------------------
 
-## How to Use Tasks
+To test the device, follow these steps:
 
-[Documentation is here](https://aka.ms/tfbuild)
+1.  If you test signed your driver package, you must enable installation of test signed drivers on the target machine. To do so, either press F8 as the target machine comes up from a reboot, or specify **Bcdedit.exe -set TESTSIGNING ON** and reboot. If you use F8, the change only applies until the next reboot.
+2.  Plug in the OSR USB-FX-2 Learning Kit (must be version 2.00 or later).
+3.  In Device Manager, select **Update Driver Software**, **Browse my computer for driver software**, **Let me pick from a list of device drivers on my computer**, **Have Disk**. Navigate to the directory that contains your driver package and select the INF file.
+4.  After the driver installs, verify that the device appears under the **Sample Device** node in Device Manager.
+5.  Flip the switches on the OSR USB-FX-2 hardware board and watch the raw PDO entries appear and disappear under **Sample Device** in Device Manager.
+6.  Right-click a raw PDO entry, select **Properties**, and then click the **Events** tab. Under **Information**, examine the hardware ID for the PDO. It should be something like this:
 
-## Writing Tasks
+    ```
+    6FDE7521-1B65-48ae-B628-80BE62016026}\OsrUsbFxRawPdo\6&227995e2&0&08
+    ```
 
-Before writing a task, consider simply customizing your build using the script running tasks such as PowerShell or shell scripts.  That is often the most appropriate path.
+    The last digit matches the number of the switch that you toggled.
 
-Tasks are simply tool runners.  They know how to run MSBuild, VSTest, etc... in a first class way and handle return codes, how to treat std/err out, and how to write timeline records based on expected output.  They also get access to credentials to write back to TFS/Team Services. 
+Hardware Overview
+-----------------
 
-For uploading custom tasks to VSTS use the [TFS Cross Platform Command Line utility](https://github.com/Microsoft/tfs-cli).
+Here is the overview of the device:
 
-Tasks can also be deployed with an Visual Studio Team Service Extension. See [this tutorial](https://www.visualstudio.com/en-us/docs/integrate/extensions/develop/add-build-task) how to package tasks inside an extension.
+-   Device is based on the development board supplied with the Cypress EZ-USB FX2 Development Kit (CY3681).
+-   Contains 1 interface and 3 endpoints (Interrupt IN, Bulk Out, Bulk IN).
+-   Firmware supports vendor commands to query or set LED Bar graph display, 7-segment LED display and query toggle switch states.
+-   Interrupt Endpoint:
+    -   Sends an 8-bit value that represents the state of the switches.
+    -   Sent on startup, resume from suspend, and whenever the switch pack setting changes.
+    -   Firmware does not de-bounce the switch pack.
+    -   One switch change can result in multiple bytes being sent.
+    -   Bits are in the reverse order of the labels on the pack
 
-## Contributing
-We take contributions.  [Read here](docs/contribute.md) how to contribute.
+        E.g. bit 0x80 is labeled 1 on the pack
+
+-   Bulk Endpoints are configured for loopback:
+    -   Device moves data from IN endpoint to OUT endpoint.
+    -   Device does not change the values of the data it receives nor does it internally create any data.
+    -   Endpoints are always double buffered.
+    -   Maximum packet size depends on speed (64 Full speed, 512 High speed).
